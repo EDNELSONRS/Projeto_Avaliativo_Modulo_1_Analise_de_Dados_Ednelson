@@ -1,0 +1,24 @@
+# Credenciais locais; o modelo sem senha real deve ser versionado.
+.env
+.env.*
+!.env.example
+
+# Ambientes virtuais e arquivos locais dos editores.
+venv/
+.venv*/
+.vscode/
+.idea/
+
+# Cache do Python, do notebook e dos verificadores de estilo.
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+.pytest_cache/
+.ruff_cache/
+
+# Dados de origem, downloads e saídas locais não entram no repositório.
+data/
+*.zip
+*.csv
+*.tmp
+*.log
