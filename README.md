@@ -1,69 +1,96 @@
-# Análise de despesas com viagens a serviço
+# Projeto Avaliativo de Análise de Dados: Módulo 1
 
-Projeto avaliativo de Análise de Dados com Python. O objetivo é transformar
-dados de viagens a serviço do Governo Federal em informações sobre custos,
-destinos, duração, pagamentos e meios de transporte.
+**Autor:** Ednelson Rocha
 
-O pipeline usa PostgreSQL e a arquitetura Medallion: Raw, Silver e Gold.
-O guia [GUIA_EXECUCAO.md](GUIA_EXECUCAO.md) apresenta a execução no Windows
-e o versionamento por funcionalidades.
+**Tema:** despesas com viagens a serviço do Governo Federal
 
-## Tecnologias
+Pipeline de dados em Python e PostgreSQL que transforma os arquivos de viagens
+fornecidos na atividade em tabelas relacionais, indicadores e gráficos. A solução
+permite analisar custos, destinos, duração, pagamentos e meios de transporte,
+preservando a origem de cada transformação.
 
-Python 3.10 ou superior; PostgreSQL 13 ou superior; psycopg2, SQLAlchemy,
-python-dotenv, gdown, pandas, Matplotlib, Seaborn, ipykernel e nbformat.
-O notebook pode ser executado pelas extensões Python e Jupyter do VS Code.
-Não é necessário instalar o JupyterLab para essa forma de execução.
+[Repositório do projeto](https://github.com/EDNELSONRS/Projeto_Avaliativo_Modulo_1_Analise_de_Dados_Ednelson)
 
-## Dados de origem
+## Arquitetura e organização
 
-A base da atividade contém viagens iniciadas entre janeiro e junho de 2025.
-Algumas viagens terminam em 2026; essas datas são preservadas.
+```mermaid
+flowchart LR
+    D["ZIP da atividade"] --> R["Raw: cópia dos CSVs"]
+    R --> S["Silver: tipagem e integridade"]
+    S --> Q["Perguntas 1 a 3"]
+    S --> G["Gold: agregações e views"]
+    G --> A["Perguntas 4 a 7"]
+```
 
-[Baixar a base fornecida no Google Drive](https://drive.google.com/file/d/1pQjKacyHdIsyteknQbwKGM5_4hL5V4RV/view).
-
-O ID público do arquivo é `1pQjKacyHdIsyteknQbwKGM5_4hL5V4RV` e já está
-preenchido no modelo de configuração. O ZIP contém:
-
-- `2025_Viagem.csv`;
-- `2025_Pagamento.csv`;
-- `2025_Passagem.csv`;
-- `2025_Trecho.csv`.
-
-Os CSVs usam codificação Latin-1, separador `;`, vírgula decimal e datas
-no formato `DD/MM/AAAA`. O download requer acesso público ao arquivo.
-
-## Arquivos
-
-| Arquivo | Função |
+| Camada | Implementação |
 |---|---|
-| `0_criar_banco.sql` | Remove e cria o banco nomeado e suas oito tabelas. |
-| `0_criar_banco.py` | Executa as etapas do SQL nas conexões correspondentes. |
-| `1_extrair.py` | Baixa e valida o ZIP e carrega as quatro tabelas Raw. |
-| `2_transformar.py` | Converte os dados e popula as quatro tabelas Silver. |
-| `3_analise.ipynb` | Responde às sete perguntas e constrói a camada Gold. |
-| `config.py` | Define caminhos, configuração e o layout dos CSVs. |
-| `banco.py` | Valida as credenciais e centraliza as conexões. |
-| `verificar_projeto.py` | Confere contagens e totais sem modificar os dados. |
-| `gerar_notebook.py` | Recria o notebook sem suas saídas; uso opcional. |
-| `.env.example` | Modelo de configuração sem senha real. |
-| `requirements.txt` | Dependências Python. |
-| `GUIA_EXECUCAO.md` | Passo a passo de instalação, execução e Git. |
+| Raw | Quatro tabelas com todas as 65 colunas originais como `VARCHAR`, sem constraints. |
+| Silver | Quatro tabelas tipadas, com chaves primárias, estrangeiras e restrições adicionais. |
+| Gold | Tabela `gold_resumo_viagem`, uma view de resumo e quatro views de métricas. |
 
-## Configuração
+A tabela de resumo Gold tem uma linha por viagem. Pagamentos, passagens e trechos são agregados
+antes das junções para evitar multiplicação de valores. As perguntas 1 a 3 usam
+SQL sobre Silver; as perguntas 4 a 7 consultam as views Gold.
 
-Abra a pasta do projeto no VS Code. No PowerShell, dentro dessa pasta:
+Os 11 arquivos versionados são:
+
+```text
+projeto-viagens/
+├── .env.example
+├── .gitignore
+├── 0_criar_banco.py
+├── 0_criar_banco.sql
+├── 1_extrair.py
+├── 2_transformar.py
+├── 3_analise.ipynb
+├── banco.py
+├── config.py
+├── README.md
+└── requirements.txt
+```
+
+O arquivo `.env`, o ambiente `.venv` e a pasta `data/` são locais e ficam fora do Git.
+
+## Tecnologias e dados
+
+Ambiente validado: **Python 3.12 e PostgreSQL 18.3**, no Windows.
+
+- Acesso ao banco: psycopg2 e SQLAlchemy.
+- Processamento e download: pandas, python-dotenv e gdown.
+- Análise e gráficos: notebook Jupyter, Matplotlib e Seaborn.
+- Editor: VS Code com as extensões Python e Jupyter.
+
+A base fornecida contém viagens iniciadas de janeiro a junho de 2025. Algumas
+terminam em 2026; essas datas são preservadas. O ZIP contém `2025_Viagem.csv`,
+`2025_Pagamento.csv`, `2025_Passagem.csv` e `2025_Trecho.csv`, com separador `;`,
+codificação Latin-1, vírgula decimal e datas no formato `DD/MM/AAAA`.
+
+[Base da atividade no Google Drive](https://drive.google.com/file/d/1pQjKacyHdIsyteknQbwKGM5_4hL5V4RV/view)
+
+O ID `1pQjKacyHdIsyteknQbwKGM5_4hL5V4RV` já está preenchido no modelo de
+configuração. O download automático requer acesso ao arquivo compartilhado.
+
+## Instalação no Windows
+
+Instale Git, Python 3.12, PostgreSQL e VS Code. Inicie o serviço PostgreSQL e use
+um usuário com permissão para criar bancos. Se `transparencia_viagens` já existir,
+o usuário também precisa ser seu proprietário ou ter privilégios equivalentes.
+
+No PowerShell, clone em um caminho curto e prepare o ambiente:
 
 ```powershell
-py -m venv .venv
+git clone https://github.com/EDNELSONRS/Projeto_Avaliativo_Modulo_1_Analise_de_Dados_Ednelson.git "D:\projeto-viagens"
+Set-Location "D:\projeto-viagens"
+py -3.12 -m venv .venv
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned
 .\.venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 Copy-Item .env.example .env
 ```
 
-Edite o `.env`, substituindo `COLE_SUA_SENHA_AQUI` pela senha do seu
-PostgreSQL. A configuração padrão é:
+A alteração da política de execução vale somente para o PowerShell atual.
+Abra a pasta clonada no VS Code. Na primeira configuração, edite o `.env`:
 
 ```dotenv
 POSTGRES_HOST=localhost
@@ -74,121 +101,82 @@ POSTGRES_DATABASE=transparencia_viagens
 DRIVE_FILE_ID=1pQjKacyHdIsyteknQbwKGM5_4hL5V4RV
 ```
 
-As credenciais são lidas somente do `.env` da pasta deste projeto.
-Cada pessoa usa a senha do próprio PostgreSQL. O nome do banco deve
-corresponder ao nome explícito no SQL: `transparencia_viagens`.
+Substitua `COLE_SUA_SENHA_AQUI` pela senha do seu PostgreSQL e salve. Use aspas
+simples se ela contiver `#` ou espaços. As credenciais são lidas do `.env` desta
+pasta. Mantenha a senha real somente nesse arquivo: ela não deve entrar no código,
+no `.env.example`, nos resultados do notebook ou no histórico Git.
 
-O serviço PostgreSQL deve estar ativo. O usuário precisa de permissão para
-criar bancos e ser proprietário de `transparencia_viagens` quando ele existe.
+Confirme a conexão administrativa com um teste que não altera o banco:
 
-## Execução
+```powershell
+python -c "from banco import conectar; c=conectar('template1'); print('Conexao administrativa OK'); c.close()"
+```
 
-### 0. Criar o banco e as tabelas
+## Execução do pipeline
 
-**Esta etapa remove todo o banco `transparencia_viagens` e seus dados.**
-Use um banco dedicado ao projeto. Feche conexões de notebooks, pgAdmin e
-psql com esse banco antes de executá-la.
+Execute as etapas na ordem abaixo, com o ambiente virtual ativo.
+
+### 0. Recriar o banco e criar as tabelas
+
+**Esta etapa exclui e recria o banco `transparencia_viagens` inteiro, apagando seus
+objetos e dados anteriores.** Use um banco dedicado ao projeto e faça backup dos
+dados que precisar preservar. Desconecte sessões do pgAdmin, psql e notebooks
+que estejam utilizando esse banco antes de executar:
 
 ```powershell
 python 0_criar_banco.py
 ```
 
-O SQL contém `DROP DATABASE IF EXISTS transparencia_viagens`,
-`CREATE DATABASE transparencia_viagens TEMPLATE template0`, a troca de
-conexão e os oito `CREATE TABLE`. Os antigos DROP VIEW e DROP TABLE foram
-retirados dessa etapa conforme a orientação do professor.
+O SQL declara `DROP DATABASE IF EXISTS transparencia_viagens`,
+`CREATE DATABASE transparencia_viagens TEMPLATE template0` e oito `CREATE TABLE`.
+O script Python administra o banco por uma conexão com `template1`, em autocommit,
+e depois cria as tabelas no banco do projeto. O nome configurado deve coincidir
+com o nome explícito no SQL. Esta é a única etapa que remove o banco inteiro.
 
-O Python executa DROP e CREATE separadamente em uma conexão administrativa
-com `template1`, em autocommit. Assim, não depende da existência do banco
-administrativo `postgres`. Depois abre uma conexão no banco criado e
-executa a criação das tabelas em uma transação. A remoção do banco não pode
-ser desfeita por rollback. [Documentação do PostgreSQL](https://www.postgresql.org/docs/18/sql-dropdatabase.html).
-
-Para executar o SQL diretamente pelo psql no Windows:
-
-```powershell
-& "C:\Program Files\PostgreSQL\18\bin\psql.exe" -X -h localhost -p 5432 -U postgres -d template1 -W -f .\0_criar_banco.sql
-```
-
-As linhas `\set ON_ERROR_STOP on` e `\connect transparencia_viagens`
-são comandos do psql: interrompem o script em caso de erro e mudam para
-o banco recém-criado. No Query Tool do pgAdmin, execute DROP e CREATE
-separadamente na conexão com `template1`; depois abra uma conexão com
-`transparencia_viagens` e execute somente o bloco CREATE TABLE/CREATE INDEX.
-
-### 1. Extrair para Raw
+### 1. Baixar e carregar a camada Raw
 
 ```powershell
 python 1_extrair.py
 ```
 
-Sem o ZIP local, o script faz o download automático pelo ID do Drive.
-O download é temporário e só é publicado em
-`data/viagens_2025_6meses.zip` após validar integridade, membros e cabeçalhos.
-O ZIP local também é validado antes de conectar ao banco.
+Sem um ZIP local, o script baixa a base e valida sua integridade, os quatro CSVs
+e seus cabeçalhos antes da carga. O arquivo validado fica em
+`data/viagens_2025_6meses.zip`. A leitura é progressiva por COPY, preservando os
+valores originais. TRUNCATE e carga das quatro tabelas usam uma única transação;
+uma falha reverte a carga. Reexecutar esta etapa substitui os dados Raw.
 
-As quatro Raw mantêm todas as colunas originais como `VARCHAR`, sem
-restrições. COPY transmite o conteúdo progressivamente, sem carregar o
-CSV inteiro em memória. Os quatro TRUNCATE/COPY usam uma única transação.
-Uma falha reverte a carga e retorna código de saída diferente de zero.
-
-### 2. Transformar para Silver
+### 2. Transformar os dados para Silver
 
 ```powershell
 python 2_transformar.py
 ```
 
-São convertidos textos, datas, inteiros e decimais. Silver possui chaves
-primárias, estrangeiras e as restrições adicionais do enunciado.
+A transformação aplica `BTRIM` aos identificadores e textos, converte datas,
+inteiros e decimais brasileiros e preserva campos opcionais não informados como
+nulos. PK, FK, NOT NULL, CHECK e UNIQUE asseguram a integridade definida no modelo.
+As validações prévias rejeitam identificadores ausentes, registros órfãos e
+pagamentos sem tipo antes de substituir Silver.
 
 ```text
 valor_total = valor_diarias + valor_passagens + valor_outros_gastos - valor_devolucao
 duracao_dias = data_fim - data_inicio
 ```
 
-Somente na composição do total, componentes ausentes contam como zero.
-Os campos individuais continuam nulos quando não informados. A duração
-não acrescenta um dia à diferença entre as datas.
+Componentes monetários ausentes contam como zero somente na composição do total.
+A duração não acrescenta um dia à diferença. Os quatro TRUNCATE/INSERT ocorrem
+em uma transação; reexecutar esta etapa substitui os dados Silver.
 
-A transformação remove espaços externos dos identificadores tanto na
-viagem quanto nos três tipos de registros filhos, antes de fazer as junções.
-Uma conferência prévia interrompe a carga se houver viagens sem
-identificador, pagamentos sem tipo ou filhos sem viagem correspondente.
-Assim, esses registros não são descartados silenciosamente e a Silver
-anterior é preservada. Todos os TRUNCATE/INSERT usam uma única transação.
+### 3. Executar as análises e conferir o resultado
 
-### 3. Executar o notebook
+1. Abra `3_analise.ipynb` no VS Code.
+2. Em **Selecionar Kernel**, escolha o Python de `D:\projeto-viagens\.venv\Scripts\python.exe`.
+3. Reinicie o kernel e selecione **Executar Tudo**.
+4. Aguarde as sete respostas, tabelas, seis figuras e a última célula de conferência.
+5. Salve com **Ctrl+S** para manter os resultados no notebook entregue.
 
-Abra `3_analise.ipynb`, selecione o Python de `.venv`, reinicie o kernel
-e use **Executar Tudo**. Salve o notebook com as tabelas e gráficos.
-O notebook constrói Gold a partir de Silver; não recarrega Raw ou Silver.
-
-As três primeiras perguntas consultam Silver. A tabela
-`gold_resumo_viagem` e sua view têm uma linha por viagem; pagamentos,
-passagens e trechos são agregados antes das junções para evitar
-multiplicação de valores. Quatro views Gold agrupam pagamentos por tipo,
-transporte, UF e órgão pagador. As perguntas 4 a 7 consultam essas views.
-
-### 4. Conferir o resultado
-
-```powershell
-python verificar_projeto.py
-```
-
-A verificação usa uma transação somente de leitura. Compara Raw e Silver,
-confere os seis objetos Gold, a unicidade das viagens e os totais agregados.
-Também sinaliza linhas de pagamento e passagem com todos os campos iguais.
-Esses avisos de qualidade não significam falha de execução.
-
-## Perguntas de negócio
-
-1. Quais são os cinco órgãos superiores com maior custo total?
-2. Quais são os três destinos com maior custo médio por viagem?
-3. Qual foi a viagem de maior duração e qual foi seu custo total?
-4. Qual tipo de pagamento apresenta o maior valor médio?
-5. Qual meio de transporte aparece mais nos trechos?
-6. Qual UF de destino aparece em mais trechos?
-7. Qual órgão pagador apresenta o maior total pago?
+O notebook reconstrói os objetos Gold. A última célula reconcilia as contagens
+Raw/Silver, a unicidade das viagens Gold e os totais de custos, pagamentos e
+trechos; também apresenta a auditoria das repetições financeiras.
 
 ## Resultados da base fornecida
 
@@ -199,63 +187,39 @@ Esses avisos de qualidade não significam falha de execução.
 | Passagem | 167.260 | 167.260 |
 | Trecho | 763.349 | 763.349 |
 
-São 1.879.385 registros em cada camada e 341.860 viagens na tabela de
-resumo Gold. As sete respostas são apresentadas nas tabelas do notebook.
+São **1.879.385 registros por camada** e **341.860 viagens** no resumo Gold.
+Os rankings completos, as consultas e os gráficos estão no notebook.
 
-| Indicador | Resultado |
+| Pergunta de negócio | Resultado principal |
 |---|---|
-| Maior custo por órgão superior | Ministério da Justiça e Segurança Pública: R$ 486.933.121,65. |
-| Maior custo médio por roteiro | Abu Dabi/Emirados Árabes, Riad/Arábia Saudita, Rio de Janeiro/RJ: R$ 245.852,80, uma viagem. |
-| Maior duração | Processo 0000000000020699856: 383 dias; custo registrado de R$ 0,00. |
-| Maior média por tipo de pagamento | DIÁRIAS: R$ 2.078,28 por registro. |
-| Transporte mais frequente | Veículo Oficial: 386.424 trechos. |
-| UF de destino mais frequente | São Paulo: 82.722 ocorrências em trechos. |
-| Maior total por órgão pagador | Fundo Nacional de Segurança Pública: R$ 278.481.047,89. |
+| 1. Quais são os cinco órgãos com maior custo total? | Líder: Ministério da Justiça e Segurança Pública, R$ 486.933.121,65. |
+| 2. Quais são os três destinos com maior custo médio por viagem? | Líder: Abu Dabi/Emirados Árabes, Riad/Arábia Saudita, Rio de Janeiro/RJ, R$ 245.852,80; uma viagem. |
+| 3. Qual é a viagem de maior duração e seu custo? | Processo 0000000000020699856: 383 dias e custo registrado de R$ 0,00. |
+| 4. Qual tipo de pagamento tem o maior valor médio? | DIÁRIAS: R$ 2.078,28 por registro de pagamento. |
+| 5. Qual meio de transporte é mais usado nos trechos? | Veículo Oficial: 386.424 trechos. |
+| 6. Qual UF de destino aparece em mais trechos? | São Paulo: 82.722 ocorrências. |
+| 7. Qual órgão pagou mais no total? | Fundo Nacional de Segurança Pública: R$ 278.481.047,89. |
 
-## Interpretação e limites
+## Interpretação e qualidade dos dados
 
-O custo por órgão superior mede custos líquidos das viagens. O total por
-órgão pagador mede os registros de pagamento: são medidas diferentes e não
-devem ser somadas entre si. Os rankings isolados não demonstram eficiência
-ou causalidade.
-
-Na pergunta 2, destino corresponde ao texto completo do roteiro; o custo
-não é repartido entre cidades. Cada um dos três roteiros vencedores tem
-uma viagem, o que limita a generalização da média. Os códigos Roteiro 1,
-2 e 3 no gráfico correspondem aos textos completos da tabela.
-
-O custo zero da viagem mais longa é um valor registrado na fonte e não
-comprova ausência de despesas. Duração e custo são exibidos separadamente,
-com unidades próprias. Campos opcionais vazios são preservados como
-ausentes; a categoria de transporte `Inválido` é mantida nas contagens.
-
-Na fonte fornecida, há 38.105 ocorrências excedentes de linhas completas
-iguais em Pagamento e 50 em Passagem. Os CSVs não fornecem um identificador
-único desses eventos. Por isso, igualdade de campos não basta para concluir
-que dois pagamentos ou duas passagens representam o mesmo evento.
-Esses registros são preservados e sinalizados nas verificações; a sua
-exclusão exige uma regra de negócio confirmada. Retirar linhas apenas por
-coincidência de valores alteraria os totais sem suporte na documentação.
-
-As chaves de negócio explicitadas no enunciado estão únicas neste lote:
-`id_viagem` e `(id_viagem, sequencia_trecho)`. PK e UNIQUE impedem repetição
-dessas chaves na Silver. TRUNCATE evita acumular cargas em reexecuções;
-isso é diferente de eliminar repetições já existentes na fonte.
+- Em Q2, destino é o roteiro completo informado na fonte, sem rateio entre cidades.
+  Cada um dos três roteiros do ranking tem apenas uma viagem; a média exige essa ressalva.
+- O custo zero da viagem mais longa é o valor registrado e não comprova ausência de despesas.
+- Custo líquido da viagem e soma dos pagamentos são medidas diferentes e não devem ser somadas.
+- A fonte tem **38.105 ocorrências excedentes de pagamentos** e **50 de passagens** com linhas
+  integralmente iguais. Os registros foram preservados e sinalizados: sem identificador
+  do evento ou regra de negócio confirmada, igualdade de campos não prova duplicação indevida.
+- IDs gerados em Silver identificam linhas, não comprovam a unicidade de eventos financeiros.
+  TRUNCATE evita acumular cargas repetidas; não deduplica os registros dentro da própria fonte.
+- Campos opcionais vazios permanecem ausentes. UFs não informadas ficam fora do ranking de UFs;
+  a categoria de transporte `Inválido` é preservada. Os rankings não demonstram causalidade ou eficiência.
 
 ## Melhorias futuras
 
-- Retentativas controladas para falhas transitórias no download.
-- Logs persistentes com duração das etapas e registros rejeitados.
-- Normalização dos destinos para análises por cidade.
-- Comparações mensais e análise de custos considerando volume de viagens.
+Definir chaves de negócio para eventos financeiros, normalizar destinos por cidade,
+adicionar retentativas de download e registrar logs persistentes de execução.
 
-## Versionamento e entrega
+## Entrega acadêmica
 
-Versione os scripts, SQL, notebook com saídas, documentação, dependências,
-`.env.example` e `.gitignore`. As pastas de dados e ambiente virtual,
-o `.env` e os ZIPs ficam fora do Git. O guia apresenta branches por
-funcionalidade e commits com mensagens específicas.
-
-A entrega solicitada é o link do repositório GitHub na atividade
-**Módulo 1 - Projeto Avaliativo**, no AVA, até **03/11/2026 às 22h**.
-Depois de entregar, mantenha o repositório sem alterações até a correção.
+Disponibilizar o link do repositório no AVA, em **Módulo 1 - Projeto Avaliativo**,
+até **03/11/2026 às 22h**. Após a entrega, manter o repositório sem alterações até a correção.
