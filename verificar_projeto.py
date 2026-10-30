@@ -70,6 +70,24 @@ def conferir() -> list[str]:
                 """)
                 if not all(cursor.fetchone()):
                     raise ValueError("Falha de reconciliação na camada Gold.")
+                for entidade in ("pagamento", "passagem"):
+                    cursor.execute(sql.SQL("""
+                        SELECT COALESCE(SUM(quantidade - 1), 0)::BIGINT
+                        FROM (
+                            SELECT COUNT(*) AS quantidade
+                            FROM {} r
+                            GROUP BY r
+                            HAVING COUNT(*) > 1
+                        ) grupos
+                    """).format(sql.Identifier(f"raw_{entidade}")))
+                    repeticoes = cursor.fetchone()[0]
+                    if repeticoes:
+                        mensagens.append(
+                            f"Aviso de qualidade: {entidade} possui "
+                            f"{repeticoes:,} ocorrências excedentes com todos "
+                            "os campos iguais na fonte. Preservadas por não "
+                            "haver ID único ou regra para excluir eventos."
+                        )
     mensagens.append("Gold: viagens únicas, contagens e totais conciliados.")
     return mensagens
 

@@ -107,14 +107,14 @@ INSERT INTO silver_pagamento (
     valor
 )
 SELECT
-    r.id_viagem,
+    NULLIF(BTRIM(r.id_viagem), ''),
     NULLIF(BTRIM(r.num_proposta), ''),
     NULLIF(BTRIM(r.nome_orgao_pagador), ''),
     NULLIF(BTRIM(r.nome_ug_pagadora), ''),
     NULLIF(BTRIM(r.tipo_pagamento), ''),
     {num('r.valor')}
 FROM raw_pagamento r
-JOIN silver_viagem v ON v.id_viagem = r.id_viagem
+JOIN silver_viagem v ON v.id_viagem = NULLIF(BTRIM(r.id_viagem), '')
 WHERE NULLIF(BTRIM(r.tipo_pagamento), '') IS NOT NULL;
 
 INSERT INTO silver_passagem (
@@ -131,7 +131,7 @@ INSERT INTO silver_passagem (
     data_emissao
 )
 SELECT
-    r.id_viagem,
+    NULLIF(BTRIM(r.id_viagem), ''),
     NULLIF(BTRIM(r.meio_transporte), ''),
     NULLIF(BTRIM(r.pais_origem_ida), ''),
     NULLIF(BTRIM(r.uf_origem_ida), ''),
@@ -143,7 +143,7 @@ SELECT
     {num('r.taxa_servico')},
     {data('r.data_emissao')}
 FROM raw_passagem r
-JOIN silver_viagem v ON v.id_viagem = r.id_viagem;
+JOIN silver_viagem v ON v.id_viagem = NULLIF(BTRIM(r.id_viagem), '');
 
 INSERT INTO silver_trecho (
     id_viagem,
@@ -158,7 +158,7 @@ INSERT INTO silver_trecho (
     numero_diarias
 )
 SELECT
-    r.id_viagem,
+    NULLIF(BTRIM(r.id_viagem), ''),
     NULLIF(BTRIM(r.sequencia_trecho), '')::INTEGER,
     {data('r.origem_data')},
     NULLIF(BTRIM(r.origem_uf), ''),
@@ -169,8 +169,43 @@ SELECT
     NULLIF(BTRIM(r.meio_transporte), ''),
     {num('r.numero_diarias')}
 FROM raw_trecho r
-JOIN silver_viagem v ON v.id_viagem = r.id_viagem;
+JOIN silver_viagem v ON v.id_viagem = NULLIF(BTRIM(r.id_viagem), '');
 """
+
+
+def validar_raw(cursor) -> None:
+    """Interrompe a carga antes de descartar registros sem vínculo ou tipo."""
+    verificacoes = [
+        (
+            "viagens sem identificador",
+            "SELECT COUNT(*) FROM raw_viagem "
+            "WHERE NULLIF(BTRIM(id_viagem), '') IS NULL",
+        ),
+        (
+            "pagamentos sem tipo",
+            "SELECT COUNT(*) FROM raw_pagamento "
+            "WHERE NULLIF(BTRIM(tipo_pagamento), '') IS NULL",
+        ),
+    ]
+    for entidade in ("pagamento", "passagem", "trecho"):
+        verificacoes.append((
+            f"registros de {entidade} sem viagem correspondente",
+            f"SELECT COUNT(*) FROM raw_{entidade} r "
+            "WHERE NOT EXISTS (SELECT 1 FROM raw_viagem v "
+            "WHERE NULLIF(BTRIM(v.id_viagem), '') = "
+            "NULLIF(BTRIM(r.id_viagem), ''))",
+        ))
+    problemas = []
+    for descricao, consulta in verificacoes:
+        cursor.execute(consulta)
+        quantidade = cursor.fetchone()[0]
+        if quantidade:
+            problemas.append(f"{descricao}: {quantidade:,}")
+    if problemas:
+        raise ValueError(
+            "A Raw contém inconsistências; a Silver foi preservada. "
+            + "; ".join(problemas)
+        )
 
 
 def transformar_silver() -> dict[str, int]:
@@ -179,6 +214,7 @@ def transformar_silver() -> dict[str, int]:
     with closing(conectar()) as conn:
         with conn:
             with conn.cursor() as cur:
+                validar_raw(cur)
                 cur.execute(SQL)
                 for tabela in TABELAS_SILVER:
                     cur.execute(
