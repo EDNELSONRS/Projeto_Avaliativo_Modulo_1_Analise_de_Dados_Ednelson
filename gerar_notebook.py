@@ -41,6 +41,9 @@ def main() -> None:
       exclusivamente views agregadas da camada Gold.
     - Cada pagamento e cada trecho contam como um registro de sua entidade;
       o custo da viagem e a soma dos pagamentos são medidas distintas.
+    - Pagamentos e passagens não têm identificador único de evento na fonte.
+      Linhas com campos iguais são preservadas e sinalizadas na conferência;
+      excluir essas linhas requer uma regra de negócio confirmada.
     """)
 
     code("""
@@ -86,7 +89,10 @@ def main() -> None:
             )
         display(estilo)
 
-    def barras(df, categoria, medida, titulo, eixo, escala=1, casas=0):
+    def barras(
+        df, categoria, medida, titulo, eixo, eixo_categoria,
+        escala=1, casas=0,
+    ):
         altura = max(4.3, 0.65 * len(df) + 1.7)
         fig, ax = plt.subplots(
             figsize=(11, altura), layout="constrained"
@@ -97,10 +103,10 @@ def main() -> None:
             for nome in df[categoria]
         ]
         posicoes = list(range(len(df)))
-        marcas = ax.barh(posicoes, valores, color="#386641")
+        marcas = ax.barh(posicoes, valores, color="#386641", label=eixo)
         ax.set_yticks(posicoes, labels=nomes)
         ax.invert_yaxis()
-        ax.set(title=titulo, xlabel=eixo, ylabel="")
+        ax.set(title=titulo, xlabel=eixo, ylabel=eixo_categoria)
         ax.xaxis.set_major_formatter(
             FuncFormatter(lambda v, _: numero_br(v, casas))
         )
@@ -111,6 +117,7 @@ def main() -> None:
             padding=5,
         )
         ax.grid(axis="y", visible=False)
+        fig.legend(loc="outside lower center", frameon=False)
         plt.show()
 
     print("Conexão configurada. Período da base: janeiro a junho de 2025.")
@@ -131,7 +138,8 @@ def main() -> None:
     barras(
         q1, "orgao", "custo_total",
         "Cinco órgãos com maior custo total - base jan-jun/2025",
-        "Custo total (R$ milhões)", escala=1_000_000, casas=2,
+        "Custo total (R$ milhões)", "Órgão superior",
+        escala=1_000_000, casas=2,
     )
     lider = q1.iloc[0]
     display(Markdown(
@@ -171,7 +179,8 @@ def main() -> None:
     barras(
         q2, "roteiro", "custo_medio",
         "Três roteiros com maior custo médio - base jan-jun/2025",
-        "Custo médio por viagem (R$ mil)", escala=1_000, casas=2,
+        "Custo médio por viagem (R$ mil)", "Roteiro",
+        escala=1_000, casas=2,
     )
     lider = q2.iloc[0]
     display(Markdown(
@@ -200,9 +209,12 @@ def main() -> None:
     fig, axes = plt.subplots(
         1, 2, figsize=(11, 4.2), layout="constrained"
     )
-    axes[0].barh(["Viagem selecionada"], [duracao], color="#386641")
+    axes[0].barh(
+        ["Viagem selecionada"], [duracao], color="#386641",
+        label="Duração da viagem",
+    )
     axes[0].set(
-        title="Duração da viagem", xlabel="Duração (dias)",
+        title="Duração da viagem", xlabel="Duração (dias)", ylabel="Viagem",
         xlim=(0, max(duracao, 1) * 1.3),
     )
     axes[0].text(
@@ -229,6 +241,7 @@ def main() -> None:
         transform=axes[1].transAxes, fontsize=11, wrap=True,
     )
     fig.suptitle(f"Viagem mais longa - processo {viagem['id_viagem']}")
+    fig.legend(loc="outside lower center", frameon=False)
     plt.show()
     display(Markdown(
         f"**Resultado:** processo {viagem['id_viagem']}, "
@@ -350,7 +363,7 @@ def main() -> None:
     barras(
         q4, "tipo_pagamento", "valor_medio",
         "Valor médio por tipo de pagamento - base jan-jun/2025",
-        "Valor médio por pagamento (R$)", casas=2,
+        "Valor médio por pagamento (R$)", "Tipo de pagamento", casas=2,
     )
     lider = q4.iloc[0]
     display(Markdown(
@@ -384,9 +397,11 @@ def main() -> None:
     fig, axes = plt.subplots(
         1, 2, figsize=(15, 6), layout="constrained"
     )
-    for ax, df, categoria, medida, titulo in [
-        (axes[0], q5, "meio_transporte", "trechos", "Trechos por transporte"),
-        (axes[1], q6, "uf_destino", "ocorrencias", "Dez UFs de destino"),
+    for ax, df, categoria, medida, titulo, eixo_categoria in [
+        (axes[0], q5, "meio_transporte", "trechos", "Trechos por transporte",
+         "Meio de transporte"),
+        (axes[1], q6, "uf_destino", "ocorrencias", "Dez UFs de destino",
+         "UF de destino"),
     ]:
         valores = df[medida].astype(float).to_numpy()
         posicoes = list(range(len(df)))
@@ -394,10 +409,14 @@ def main() -> None:
             textwrap.fill(str(nome), width=22)
             for nome in df[categoria]
         ]
-        marcas = ax.barh(posicoes, valores, color="#386641")
+        marcas = ax.barh(
+            posicoes, valores, color="#386641", label="Quantidade de trechos"
+        )
         ax.set_yticks(posicoes, labels=nomes)
         ax.invert_yaxis()
-        ax.set(title=titulo, xlabel="Quantidade de trechos", ylabel="")
+        ax.set(
+            title=titulo, xlabel="Quantidade de trechos", ylabel=eixo_categoria
+        )
         ax.set_xlim(0, max(float(max(valores)), 1) * 1.28)
         ax.xaxis.set_major_formatter(
             FuncFormatter(lambda v, _: numero_br(v))
@@ -407,6 +426,10 @@ def main() -> None:
         )
         ax.grid(axis="y", visible=False)
     fig.suptitle("Transporte e destino - base jan-jun/2025")
+    fig.legend(
+        *axes[0].get_legend_handles_labels(),
+        loc="outside lower center", frameon=False,
+    )
     plt.show()
     display(Markdown(
         f"**Transporte mais frequente:** {q5.iloc[0]['meio_transporte']}, "
@@ -431,7 +454,8 @@ def main() -> None:
     barras(
         q7, "orgao_pagador", "total_pago",
         "Dez órgãos pagadores por total pago - base jan-jun/2025",
-        "Total pago (R$ milhões)", escala=1_000_000, casas=2,
+        "Total pago (R$ milhões)", "Órgão pagador",
+        escala=1_000_000, casas=2,
     )
     lider = q7.iloc[0]
     display(Markdown(
@@ -476,6 +500,28 @@ def main() -> None:
     assert bool(validacoes.iloc[0].all()), "Falha de reconciliação Gold"
     mostrar_tabela(validacoes)
     print("Contagens conciliadas e Gold com uma linha por viagem.")
+
+    repeticoes = []
+    for entidade in ("pagamento", "passagem"):
+        quantidade = consultar(f'''
+            SELECT COALESCE(SUM(quantidade - 1), 0)::BIGINT AS excedentes
+            FROM (
+                SELECT COUNT(*) AS quantidade
+                FROM raw_{entidade} r
+                GROUP BY r
+                HAVING COUNT(*) > 1
+            ) grupos
+        ''').iloc[0]["excedentes"]
+        repeticoes.append({
+            "fonte": entidade,
+            "ocorrencias_excedentes_com_campos_iguais": int(quantidade),
+        })
+    mostrar_tabela(pd.DataFrame(repeticoes))
+    display(Markdown(
+        "**Limite de qualidade:** campos iguais não identificam, por si "
+        "só, o mesmo evento financeiro. Os registros foram preservados; "
+        "excluir pagamentos ou passagens depende de regra confirmada."
+    ))
     engine.dispose()
     """)
 
