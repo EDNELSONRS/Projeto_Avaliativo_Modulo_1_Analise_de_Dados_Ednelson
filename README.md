@@ -150,10 +150,12 @@ Somente na composição do total, componentes ausentes contam como zero.
 Os campos individuais continuam nulos quando não informados. A duração
 não acrescenta um dia à diferença entre as datas.
 
-A transformação ignora viagens sem identificador, pagamentos sem tipo e
-registros filhos sem viagem correspondente. A conferência de contagens
-permite detectar essas exclusões em uma fonte diferente da fornecida.
-Todos os TRUNCATE/INSERT são executados em uma única transação.
+A transformação remove espaços externos dos identificadores tanto na
+viagem quanto nos três tipos de registros filhos, antes de fazer as junções.
+Uma conferência prévia interrompe a carga se houver viagens sem
+identificador, pagamentos sem tipo ou filhos sem viagem correspondente.
+Assim, esses registros não são descartados silenciosamente e a Silver
+anterior é preservada. Todos os TRUNCATE/INSERT usam uma única transação.
 
 ### 3. Executar o notebook
 
@@ -175,6 +177,8 @@ python verificar_projeto.py
 
 A verificação usa uma transação somente de leitura. Compara Raw e Silver,
 confere os seis objetos Gold, a unicidade das viagens e os totais agregados.
+Também sinaliza linhas de pagamento e passagem com todos os campos iguais.
+Esses avisos de qualidade não significam falha de execução.
 
 ## Perguntas de negócio
 
@@ -224,6 +228,19 @@ O custo zero da viagem mais longa é um valor registrado na fonte e não
 comprova ausência de despesas. Duração e custo são exibidos separadamente,
 com unidades próprias. Campos opcionais vazios são preservados como
 ausentes; a categoria de transporte `Inválido` é mantida nas contagens.
+
+Na fonte fornecida, há 38.105 ocorrências excedentes de linhas completas
+iguais em Pagamento e 50 em Passagem. Os CSVs não fornecem um identificador
+único desses eventos. Por isso, igualdade de campos não basta para concluir
+que dois pagamentos ou duas passagens representam o mesmo evento.
+Esses registros são preservados e sinalizados nas verificações; a sua
+exclusão exige uma regra de negócio confirmada. Retirar linhas apenas por
+coincidência de valores alteraria os totais sem suporte na documentação.
+
+As chaves de negócio explicitadas no enunciado estão únicas neste lote:
+`id_viagem` e `(id_viagem, sequencia_trecho)`. PK e UNIQUE impedem repetição
+dessas chaves na Silver. TRUNCATE evita acumular cargas em reexecuções;
+isso é diferente de eliminar repetições já existentes na fonte.
 
 ## Melhorias futuras
 

@@ -94,6 +94,9 @@ python 2_transformar.py
 
 As quatro tabelas Silver devem ter as mesmas contagens da etapa anterior.
 As mensagens de conclusão são exibidas somente após confirmar a transação.
+Se a fonte tiver identificadores ausentes, filhos sem viagem ou pagamentos
+sem tipo, a etapa interrompe a carga com as contagens dos problemas,
+preservando a Silver anterior para análise.
 
 ## 7. Executar a análise no VS Code
 
@@ -126,6 +129,12 @@ O resultado esperado informa as quatro contagens conciliadas e confirma
 a Gold. Esse comando apenas lê o banco. Repetir extração, transformação e
 notebook deve manter as mesmas contagens. A etapa 0 é usada para recriar
 todo o banco; repita-a somente quando desejar reinicializar o projeto.
+
+Na base fornecida, a conferência também mostra avisos sobre 38.105
+ocorrências excedentes de linhas iguais em Pagamento e 50 em Passagem.
+Esses registros ficam preservados: a fonte não traz ID único dos eventos,
+e campos iguais não bastam para autorizar exclusões financeiras. Os avisos
+documentam essa limitação e não indicam erro na execução do pipeline.
 
 ## 9. Criar o histórico Git da pasta nova
 
